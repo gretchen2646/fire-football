@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S.H.E. Fire | Click & Close</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0c0e13;color:white;font-family:Arial,sans-serif}
+main{max-width:650px;margin:auto;padding:18px}
+.brand{color:#ff2996;font-weight:900;letter-spacing:4px}
+h1{font-size:36px;margin:12px 0 4px;font-style:italic}
+.sub{color:#baff39;font-size:12px;letter-spacing:2px}
+.stats{display:flex;justify-content:space-between;margin:24px 0;color:#bbb}
+.panel{background:#171b23;border:1px solid #343843;border-radius:14px;padding:14px}
+svg{width:100%;display:block;border-radius:8px}
+button,select{font:inherit;border-radius:8px;padding:12px}
+button{background:#baff39;color:#101218;border:0;font-weight:900;width:100%;margin-top:12px;cursor:pointer}
+button:disabled{opacity:.4}
+select{background:#242934;color:white;border:1px solid #555;min-width:130px}
+.assignment{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #30343d}
+.correct{color:#baff39}
+.wrong{color:#ff529e}
+#feedback{line-height:1.6}
+small{color:#aaa}
+.route{stroke-dasharray:500;stroke-dashoffset:500;animation:draw 1.3s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+</style>
+</head>
+<body>
+<main>
+<div class="brand">S.H.E. FIRE</div>
+<h1>CLICK & CLOSE</h1>
+<div class="sub">READ. REACT. LOCK DOWN.</div>
+<div class="stats">
+<span id="round">PLAY 01</span>
+<span id="score">SCORE: 0/0</span>
+</div>
+<div class="panel">
+<svg id="field" viewBox="0 0 340 270"></svg>
+<p><small>Pink: Offense | Green: Defense | Yellow: Ball exchange</small></p>
+<p id="instruction">Read the formation before the snap.</p>
+<div id="assignments"></div>
+<div id="feedback"></div>
+<button id="action" onclick="advance()">SNAP BALL</button>
+</div>
+<p><small>COACH TEST VERSION — No player information collected.</small></p>
+</main>
+<script>
+const plays=[
+{
+name:"Standard passing play",
+routes:["M35 205 V30","M170 205 V175 H95","M230 205 V130 L185 65","M305 205 V30"],
+positions:[[35,205],[170,205],[230,205],[305,205],[170,250]],
+names:["WR1","C","WR2","WR3","QB"],
+answers:["WR1","C","WR2","WR3"],
+note:"Corners take outside go routes. Safety covers the strong-side inside route. Middle takes the center."
+},
+{
+name:"Flood",
+routes:["M35 205 V30","M170 205 V175 H265","M230 205 V90 H275","M305 205 V30"],
+positions:[[35,205],[170,205],[230,205],[305,205],[170,250]],
+names:["WR1","C","WR2","WR3","QB"],
+answers:["WR1","C","WR2","WR3"],
+note:"Middle crosses the center line to cover the short route. Safety takes the deeper inside route."
+},
+{
+name:"Pass-back",
+routes:["M35 205 V30","M170 205 V175 H95","M230 205 V130 L185 65","",""],
+positions:[[35,205],[170,205],[230,205],[305,230],[170,250]],
+names:["WR1","C","WR2","WR3","QB"],
+answers:["WR1","C","WR2","WR3","QB"],
+exchange:"M170 250 L305 230",
+note:"Rusher stays with the original QB. Outside corner takes the second ball holder."
+},
+{
+name:"RPO",
+routes:["M35 205 V30","M170 205 V120 H225","M305 205 V30","",""],
+positions:[[35,205],[170,205],[305,205],[245,230],[170,250]],
+names:["WR1","C","WR2","QB","RB"],
+answers:["WR1","C","QB","WR2","RB"],
+exchange:"M170 250 L245 230",
+note:"Safety takes the second ball holder. Middle replaces safety. Outside corner takes the go. Rusher stays with the first ball holder."
+}
+];
+let play,mirror,phase=0,round=0,right=0,total=0,deck=[];
+const el=id=>document.getElementById(id);
+function shuffle(a){
+for(let i=a.length-1;i>0;i--){
+let j=Math.floor(Math.random()*(i+1));
+[a[i],a[j]]=[a[j],a[i]];
+}
+return a;
+}
+function nextPlay(){
+if(!deck.length){
+deck=shuffle(plays.flatMap(p=>[{p,m:false},{p,m:true}]));
+}
+let item=deck.pop();
+play=item.p;
+mirror=item.m;
+phase=0;
+round++;
+el("round").textContent="PLAY "+String(round).padStart(2,"0");
+el("instruction").textContent="Read the formation before the snap.";
+el("assignments").innerHTML="";
+el("feedback").innerHTML="";
+el("action").textContent="SNAP BALL";
+draw(false);
+}
+function draw(reveal){
+let s='<rect width="340" height="270" fill="#19382e"/>';
+for(let y=25;y<270;y+=36){
+s+=`<line x1="8" x2="332" y1="${y}" y2="${y}" stroke="#527468" opacity=".5"/>`;
+}
+s+='<line x1="170" x2="170" y1="0" y2="270" stroke="white" opacity=".2" stroke-dasharray="4 5"/>';
+s+='<line x1="8" x2="332" y1="205" y2="205" stroke="white" stroke-dasharray="5 4"/>';
+let transform=mirror?'translate(340 0) scale(-1 1)':'';
+if(reveal){
+s+=`<g transform="${transform}">`;
+play.routes.forEach(d=>{
+if(d)s+=`<path class="route" d="${d}" stroke="#ff2996" stroke-width="3" fill="none" stroke-linejoin="round"/>`;
+});
+if(play.exchange)s+=`<path class="route" d="${play.exchange}" stroke="#ffce40" stroke-width="4" fill="none"/>`;
+s+='</g>';
+}
+function player(x,y,label,color){
+if(mirror)x=340-x;
+s+=`<circle cx="${x}" cy="${y}" r="13" fill="${color}"/><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="9" font-weight="bold" fill="#101218">${label}</text>`;
+}
+play.positions.forEach((p,i)=>player(p[0],p[1],play.names[i],"#ff2996"));
+player(35,172,"CB","#baff39");
+player(115,145,"M","#baff39");
+player(225,125,"S","#baff39");
+player(305,172,"CB","#baff39");
+player(170,100,"R","#baff39");
+el("field").innerHTML=s;
+}
+function roles(){
+return [
+mirror?"Right corner":"Left corner",
+"Middle",
+"Safety",
+mirror?"Left corner":"Right corner",
+"Rusher"
+];
+}
+function advance(){
+if(phase===0){
+phase=1;
+draw(true);
+el("instruction").textContent="Assign your defenders.";
+let s="";
+play.answers.forEach((a,i)=>{
+s+=`<div class="assignment"><label for="a${i}">${roles()[i]}</label><select id="a${i}"><option value="">Choose</option>${play.names.map(n=>`<option>${n}</option>`).join("")}</select></div>`;
+});
+if(!play.exchange){
+s+='<p class="correct">Rusher → QB (automatic)</p>';
+}
+el("assignments").innerHTML=s;
+el("action").textContent="LOCK IN DEFENSE";
+}
+else if(phase===1){
+let values=play.answers.map((a,i)=>el("a"+i).value);
+if(values.some(v=>!v)){
+el("feedback").textContent="Assign every defender first.";
+return;
+}
+let correct=0;
+let s=`<h3>${play.name}</h3>`;
+play.answers.forEach((a,i)=>{
+let ok=values[i]===a;
+if(ok)correct++;
+s+=`<div class="${ok?"correct":"wrong"}">${ok?"✓":"✗"} ${roles()[i]} → ${a}</div>`;
+el("a"+i).disabled=true;
+});
+right+=correct;
+total+=play.answers.length;
+el("score").textContent="SCORE: "+right+"/"+total;
+el("feedback").innerHTML=`<h2>${correct}/${play.answers.length} CORRECT</h2>${s}<p>${play.note}</p>`;
+phase=2;
+el("action").textContent="NEXT PLAY";
+}
+else nextPlay();
+}
+nextPlay();
+</script>
+</body>
+</html>
