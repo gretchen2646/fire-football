@@ -1,189 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S.H.E. Fire | Click & Close</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#0c0e13;color:white;font-family:Arial,sans-serif}
-main{max-width:650px;margin:auto;padding:18px}
-.brand{color:#ff2996;font-weight:900;letter-spacing:4px}
-h1{font-size:36px;margin:12px 0 4px;font-style:italic}
-.sub{color:#baff39;font-size:12px;letter-spacing:2px}
-.stats{display:flex;justify-content:space-between;margin:24px 0;color:#bbb}
-.panel{background:#171b23;border:1px solid #343843;border-radius:14px;padding:14px}
-svg{width:100%;display:block;border-radius:8px}
-button,select{font:inherit;border-radius:8px;padding:12px}
-button{background:#baff39;color:#101218;border:0;font-weight:900;width:100%;margin-top:12px;cursor:pointer}
-button:disabled{opacity:.4}
-select{background:#242934;color:white;border:1px solid #555;min-width:130px}
-.assignment{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #30343d}
-.correct{color:#baff39}
-.wrong{color:#ff529e}
-#feedback{line-height:1.6}
-small{color:#aaa}
-.route{stroke-dasharray:500;stroke-dashoffset:500;animation:draw 1.3s forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
-</style>
-</head>
-<body>
-<main>
-<div class="brand">S.H.E. FIRE</div>
-<h1>CLICK & CLOSE</h1>
-<div class="sub">READ. REACT. LOCK DOWN.</div>
-<div class="stats">
-<span id="round">PLAY 01</span>
-<span id="score">SCORE: 0/0</span>
-</div>
-<div class="panel">
-<svg id="field" viewBox="0 0 340 270"></svg>
-<p><small>Pink: Offense | Green: Defense | Yellow: Ball exchange</small></p>
-<p id="instruction">Read the formation before the snap.</p>
-<div id="assignments"></div>
-<div id="feedback"></div>
-<button id="action" onclick="advance()">SNAP BALL</button>
-</div>
-<p><small>COACH TEST VERSION — No player information collected.</small></p>
-</main>
-<script>
-const plays=[
-{
-name:"Standard passing play",
-routes:["M35 205 V30","M170 205 V175 H95","M230 205 V130 L185 65","M305 205 V30"],
-positions:[[35,205],[170,205],[230,205],[305,205],[170,250]],
-names:["WR1","C","WR2","WR3","QB"],
-answers:["WR1","C","WR2","WR3"],
-note:"Corners take outside go routes. Safety covers the strong-side inside route. Middle takes the center."
-},
-{
-name:"Flood",
-routes:["M35 205 V30","M170 205 V175 H265","M230 205 V90 H275","M305 205 V30"],
-positions:[[35,205],[170,205],[230,205],[305,205],[170,250]],
-names:["WR1","C","WR2","WR3","QB"],
-answers:["WR1","C","WR2","WR3"],
-note:"Middle crosses the center line to cover the short route. Safety takes the deeper inside route."
-},
-{
-name:"Pass-back",
-routes:["M35 205 V30","M170 205 V175 H95","M230 205 V130 L185 65","",""],
-positions:[[35,205],[170,205],[230,205],[305,230],[170,250]],
-names:["WR1","C","WR2","WR3","QB"],
-answers:["WR1","C","WR2","WR3","QB"],
-exchange:"M170 250 L305 230",
-note:"Rusher stays with the original QB. Outside corner takes the second ball holder."
-},
-{
-name:"RPO",
-routes:["M35 205 V30","M170 205 V120 H225","M305 205 V30","",""],
-positions:[[35,205],[170,205],[305,205],[245,230],[170,250]],
-names:["WR1","C","WR2","QB","RB"],
-answers:["WR1","C","QB","WR2","RB"],
-exchange:"M170 250 L245 230",
-note:"Safety takes the second ball holder. Middle replaces safety. Outside corner takes the go. Rusher stays with the first ball holder."
-}
-];
-let play,mirror,phase=0,round=0,right=0,total=0,deck=[];
-const el=id=>document.getElementById(id);
-function shuffle(a){
-for(let i=a.length-1;i>0;i--){
-let j=Math.floor(Math.random()*(i+1));
-[a[i],a[j]]=[a[j],a[i]];
-}
-return a;
-}
-function nextPlay(){
-if(!deck.length){
-deck=shuffle(plays.flatMap(p=>[{p,m:false},{p,m:true}]));
-}
-let item=deck.pop();
-play=item.p;
-mirror=item.m;
-phase=0;
-round++;
-el("round").textContent="PLAY "+String(round).padStart(2,"0");
-el("instruction").textContent="Read the formation before the snap.";
-el("assignments").innerHTML="";
-el("feedback").innerHTML="";
-el("action").textContent="SNAP BALL";
-draw(false);
-}
-function draw(reveal){
-let s='<rect width="340" height="270" fill="#19382e"/>';
-for(let y=25;y<270;y+=36){
-s+=`<line x1="8" x2="332" y1="${y}" y2="${y}" stroke="#527468" opacity=".5"/>`;
-}
-s+='<line x1="170" x2="170" y1="0" y2="270" stroke="white" opacity=".2" stroke-dasharray="4 5"/>';
-s+='<line x1="8" x2="332" y1="205" y2="205" stroke="white" stroke-dasharray="5 4"/>';
-let transform=mirror?'translate(340 0) scale(-1 1)':'';
-if(reveal){
-s+=`<g transform="${transform}">`;
-play.routes.forEach(d=>{
-if(d)s+=`<path class="route" d="${d}" stroke="#ff2996" stroke-width="3" fill="none" stroke-linejoin="round"/>`;
-});
-if(play.exchange)s+=`<path class="route" d="${play.exchange}" stroke="#ffce40" stroke-width="4" fill="none"/>`;
-s+='</g>';
-}
-function player(x,y,label,color){
-if(mirror)x=340-x;
-s+=`<circle cx="${x}" cy="${y}" r="13" fill="${color}"/><text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="9" font-weight="bold" fill="#101218">${label}</text>`;
-}
-play.positions.forEach((p,i)=>player(p[0],p[1],play.names[i],"#ff2996"));
-player(35,172,"CB","#baff39");
-player(115,145,"M","#baff39");
-player(225,125,"S","#baff39");
-player(305,172,"CB","#baff39");
-player(170,100,"R","#baff39");
-el("field").innerHTML=s;
-}
-function roles(){
-return [
-mirror?"Right corner":"Left corner",
-"Middle",
-"Safety",
-mirror?"Left corner":"Right corner",
-"Rusher"
-];
-}
-function advance(){
-if(phase===0){
-phase=1;
-draw(true);
-el("instruction").textContent="Assign your defenders.";
-let s="";
-play.answers.forEach((a,i)=>{
-s+=`<div class="assignment"><label for="a${i}">${roles()[i]}</label><select id="a${i}"><option value="">Choose</option>${play.names.map(n=>`<option>${n}</option>`).join("")}</select></div>`;
-});
-if(!play.exchange){
-s+='<p class="correct">Rusher → QB (automatic)</p>';
-}
-el("assignments").innerHTML=s;
-el("action").textContent="LOCK IN DEFENSE";
-}
-else if(phase===1){
-let values=play.answers.map((a,i)=>el("a"+i).value);
-if(values.some(v=>!v)){
-el("feedback").textContent="Assign every defender first.";
-return;
-}
-let correct=0;
-let s=`<h3>${play.name}</h3>`;
-play.answers.forEach((a,i)=>{
-let ok=values[i]===a;
-if(ok)correct++;
-s+=`<div class="${ok?"correct":"wrong"}">${ok?"✓":"✗"} ${roles()[i]} → ${a}</div>`;
-el("a"+i).disabled=true;
-});
-right+=correct;
-total+=play.answers.length;
-el("score").textContent="SCORE: "+right+"/"+total;
-el("feedback").innerHTML=`<h2>${correct}/${play.answers.length} CORRECT</h2>${s}<p>${play.note}</p>`;
-phase=2;
-el("action").textContent="NEXT PLAY";
-}
-else nextPlay();
-}
-nextPlay();
-</script>
-</body>
-</html>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>S.H.E. Fire | Click & Close</title><style>
+*{box-sizing:border-box}body{margin:0;background:#0c0e13;color:#fff;font-family:system-ui,sans-serif}main{max-width:680px;margin:auto;padding:16px}.brand{color:#ff329b;font-weight:900;letter-spacing:3px}h1{font-size:35px;margin:4px 0;font-style:italic;line-height:1.1}h2{font-size:20px}small,.muted{color:#b4bdc9}.lime{color:#b7ff30}.panel{background:#181b23;border:1px solid #343945;border-radius:16px;padding:14px;margin:12px 0}.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.choices{display:flex;gap:7px;flex-wrap:wrap}button,select{font:inherit;color:white;background:#292e39;border:1px solid #49505e;border-radius:10px;padding:12px;cursor:pointer;touch-action:manipulation}button:disabled{opacity:.4;cursor:default}.primary{background:#b7ff30;color:#101218;font-weight:900;border:0;width:100%;margin-top:10px}.selected{background:#b7ff30;color:#101218}.receiver{border-color:#ff329b;flex:1}.receiver.selected{background:#ff329b;color:#101218}.correct{color:#b7ff30}.wrong{color:#ff80ba}svg{width:100%;display:block;background:#1b352d;border-radius:10px;max-height:55vh}svg text{user-select:none;pointer-events:none}.stats{font-weight:800;font-size:14px}.tag{font-size:12px;color:#b7ff30;letter-spacing:1px}.bar{height:5px;background:#343945;border-radius:5px;overflow:hidden}.bar i{display:block;background:#b7ff30;height:100%}label{display:block;margin:10px 0}input{accent-color:#b7ff30}.legend{font-size:12px;display:flex;justify-content:center;gap:15px;margin:8px}.step{font-size:12px;color:#aab4bd;text-align:center}.feedback{padding:9px 0;border-bottom:1px solid #343945}p{line-height:1.45} .hide{display:none}</style></head><body><main><div class="brand">ð¥ S.H.E. FIRE</div><h1>CLICK &amp; CLOSE</h1><div class="tag">DEFENSIVE IQ TRAINING</div><div id="app"></div></main><script>
+'use strict';
+// Route points are x,y coordinates; LOS = 245, 10 units per yard.
+const P=(id,...xy)=>({id,pts:Array.from({length:xy.length/2},(_,i)=>[xy[i*2],xy[i*2+1]])});
+const Q=P('QB',170,285);const B=P('RB',170,285);const a=(sc,wc,s,m,r='QB')=>({sc,wc,s,m,r});
+const question=(prompt,options,answer,why)=>({prompt,options,answer,why});
+const bite=question('The outside receiver appears to stop. What should the corner do?',['Drive immediately toward the receiver','Close under control while protecting deep','Leave the receiver and cover inside'],1,'Protect deep leverage. Do not overcommit to the first move.');
+const exchange=question('The ball changes hands. What should the defense do?',['Rusher follows the new ball holder','Corner pressures the second ball holder; rusher stays with original QB','Everyone drops into coverage'],1,'On a pass-back, the corner pressures the second ball holder and the rusher stays with the original QB.');
+const rotate=question('How should the defense react to the handoff?',['Everyone chases the runner','Safety takes the second ball holder; middle replaces safety','Corner abandons the outside go','Rusher follows the new ball holder'],1,'Safety takes the second ball holder and middle fills the vacated responsibility. Protect the outside go.');
+const plays=[];function add(name,side,receivers,ans,opts={}){plays.push({id:plays.length+1,name,side,receivers,ans,...opts});}
+add('Strong-side flood','R',[P('WR1',50,245,50,85),P('C',170,245,170,215,265,215),P('WR2',222,245,222,145,295,145),P('WR3',290,245,290,45),Q],a('WR3','WR1','WR2','C'));
+add('Inside verticals','L',[P('WR1',55,245,55,185,27,185),P('WR2',115,245,115,145,150,85),P('C',170,245,170,185,225,75),P('WR3',285,245,285,195,312,195),Q],a('WR1','WR3','WR2','C'));
+add('Crossing routes','R',[P('WR1',50,245,50,75),P('C',170,245,170,195,265,195),P('WR2',230,245,230,165,85,165),P('WR3',290,245,290,55),Q],a('WR3','WR1','C','WR2'));
+add('Trips spread','R',[P('C',170,245,170,195,65,195),P('WR1',205,245,205,155,150,95),P('WR2',250,245,250,205,295,205),P('WR3',290,245,290,55),Q],a('WR3','C','WR1','WR2'),{formation:'trips'});
+add('Weak-side flood','R',[P('WR1',50,245,50,55),P('C',170,245,170,215,65,215),P('WR2',230,245,230,145,85,145),P('WR3',290,245,290,75),Q],a('WR3','WR1','WR2','C'));
+add('Pass-back','R',[P('WR1',50,245,50,65),P('C',170,245,170,205,100,205),P('WR2',225,245,225,145,250,85),P('WR3',290,245,290,270,265,298),Q],a('WR3','WR1','WR2','C'),{manual:true,ball:[['QB',0],['WR3',.65]],q:exchange});
+add('RPO outside go','R',[P('WR1',50,245,50,65),P('C',170,245,170,165,245,165),P('WR2',290,245,290,55),P('QB',220,285,190,285,255,260),B],a('WR2','WR1','QB','C','RB'),{manual:true,ball:[['RB',0],['QB',.35]],q:rotate});
+add('RPO inside break','R',[P('WR1',50,245,50,65),P('C',170,245,170,135,235,135),P('WR2',290,245,290,195,205,195),P('QB',220,285,190,285,255,260),B],a('WR2','WR1','QB','C','RB'),{manual:true,ball:[['RB',0],['QB',.35]],q:rotate});
+add('Double move','L',[P('WR1',65,245,65,175,35,175,35,55),P('WR2',120,245,120,145,160,85),P('C',170,245,170,205,240,205),P('WR3',285,245,285,175,269,185),Q],a('WR1','WR3','WR2','C'),{q:bite,cut:.35});
+add('Trips flood away','R',[P('C',170,245,140,205,55,55),P('WR1',205,245,205,145,85,145),P('WR2',250,245,250,215,110,215),P('WR3',290,245,290,65),Q],a('WR3','C','WR1','WR2'),{formation:'trips'});
+add('Pass-back crossing','L',[P('WR1',50,245,50,270,75,300),P('WR2',115,245,115,155,255,155),P('C',170,245,170,205,85,205),P('WR3',290,245,290,55),Q],a('WR1','WR3','C','WR2'),{manual:true,ball:[['QB',0],['WR1',.65]],q:exchange});
+add('RPO changes direction','L',[P('WR1',50,245,50,65),P('C',170,245,170,145,265,145),P('WR2',290,245,290,195,235,195),P('QB',120,285,150,285,250,265),B],a('WR1','WR2','QB','C','RB'),{manual:true,ball:[['RB',0],['QB',.3]],q:rotate});
+add('Mesh double move','R',[P('WR1',55,245,55,195,30,195),P('C',170,245,170,215,260,215),P('WR2',225,245,225,175,80,175),P('WR3',290,245,290,165,278,180,290,165,290,45),Q],a('WR3','WR1','C','WR2'),{q:bite,cut:.4});
+add('Delayed center','R',[P('C',170,245,170,215,245,215),P('WR1',205,245,205,175,65,65),P('WR2',250,245,250,155,95,155),P('WR3',290,245,290,45),Q],a('WR3','WR1','WR2','C'),{formation:'trips',delay:'C'});
+add('Pass-back double move','R',[P('WR1',65,245,65,175,35,175,35,45),P('C',170,245,170,205,95,205),P('WR2',225,245,225,155,275,95),P('WR3',290,245,290,275,265,305),Q],a('WR3','WR1','WR2','C'),{manual:true,ball:[['QB',0],['WR3',.65]],q:exchange});
+add('RPO center crossing','L',[P('WR1',50,245,50,45),P('C',170,245,170,135,90,135),P('WR2',285,245,285,195,310,195),P('QB',115,285,150,285,95,265),B],a('WR1','WR2','QB','C','RB'),{manual:true,ball:[['RB',0],['QB',.35]],q:rotate});
+add('Bunch spread','R',[P('WR1',215,245,215,125,65,125),P('WR2',248,260,280,205,310,205),P('WR3',280,245,285,210,285,45),P('C',170,245,170,195,90,195),Q],a('WR3','C','WR1','WR2'),{formation:'bunch'});
+add('Stop-and-go flood','R',[P('WR1',50,245,50,185,28,185),P('C',170,245,170,225,260,225),P('WR2',225,245,225,145,275,145),P('WR3',290,245,290,175,284,182,290,175,290,45),Q],a('WR3','WR1','WR2','C'),{q:bite,cut:.4});
+add('Pre-snap motion','L',[P('WR1',55,245,55,45),P('WR2',120,260,120,175,90,105),P('WR3',285,245,285,185,306,185),P('C',170,245,170,215,255,215),Q],a('WR1','WR3','WR2','C'),{motion:true,q:question('WR2 goes in motion. What should the defense do before the snap?',['Stay in the original alignment','Move the rusher with WR2','Communicate the new strong side and adjust safety and middle','Have the corner follow WR2 across'],2,'Recognize the new strong side and communicate the adjustment.')});
+add('Delayed pass-back flood','R',[P('WR1',50,245,50,45),P('WR2',225,245,225,145,82,145),P('WR3',290,245,290,225,305,245,290,265,258,298),P('C',170,245,170,215,78,215),Q],a('WR3','WR1','WR2','C'),{manual:true,ball:[['QB',0],['WR3',.78]],q:exchange});
+add('Handoff decoys','R',[P('WR1',55,245,55,185,30,185),P('WR2',290,245,290,45),P('C',170,245,170,115,255,115),Q,P('RB',225,285,175,285,245,275,265,245)],a('WR2','WR1','RB','C'),{manual:true,ball:[['QB',0],['RB',.33]],q:rotate});
+add('Fake handoff','R',[P('WR1',55,245,55,185,30,185),P('WR2',290,245,290,45),P('C',170,245,170,115,265,115),Q,P('RB',225,285,175,285,105,285,83,245,83,215)],a('WR2','WR1','C','RB'),{q:question('The RB crosses the backfield. What should the defense do?',['Rotate as though RB has the ball','Identify who has the ball and maintain passing coverage','Send the rusher after RB','Send the weak corner after RB'],1,'QB kept the ball. RB becomes a receiver, not a runner.'),cut:.55});
+add('Reverse handoff','R',[P('WR1',55,245,105,300,205,300,35,280),P('WR2',290,245,290,45),P('C',170,245,170,145,80,145),Q,P('RB',225,285,170,285,205,300,235,245,235,205)],a('WR2','WR1','RB','C'),{manual:true,ball:[['QB',0],['RB',.22],['WR1',.57]],cut:.44,q:question('RB receives a handoff, but another receiver crosses the backfield. What now?',['Everyone pursues RB','Recognize the handoff, maintain coverage and watch for another exchange','Send both corners into the backfield','Ignore the handoff'],1,'Recognize each exchange without overcommitting to the first runner.')});
+add('Goal-line RPO','R',[P('WR1',55,245,55,150),P('C',170,245,170,195,260,195),P('WR2',285,245,285,150),P('QB',220,285,175,285,255,280),P('RB',170,285,175,285,85,245,85,225)],a('WR2','WR1','C','RB','QB'),{manual:true,goal:3,ball:[['RB',0],['QB',.28]],q:question('RB hands off to QB. How should the defense react?',['Safety attacks QB and middle replaces safety','Everyone attacks QB','Maintain passing coverage because of field position','Stop playing because a handoff occurred'],2,'In the no-run zone, maintain passing coverage. On this approved RPO, rusher pressures QB.')});
+add('Goal-line pass-back','R',[P('WR1',55,245,55,170),P('WR2',225,245,225,190,265,160),P('WR3',285,245,285,280,265,310),P('C',170,245,170,225,88,225),P('QB',170,285,205,245)],a('WR3','WR1','WR2','C','QB'),{manual:true,goal:4,ball:[['QB',0],['WR3',.65]],q:question('The offense executes a pass-back in the no-run zone. How should the defense react?',['Rusher switches to the second ball holder','Corner stays in coverage because offense cannot run','Corner pressures the second ball holder while rusher stays with original QB','Safety attacks the second ball holder'],2,'The second ball holder cannot legally run across the LOS. Corner still pressures that passer; rusher stays with original QB.')});
+const app=document.getElementById('app');const names={sc:'Strong corner',wc:'Weak corner',s:'Safety',m:'Middle',r:'Rusher'};const labels={sc:'CB',wc:'CB',s:'S',m:'M',r:'R'};let order=[],index=0,score=0,total=0,play,stage,answers,active,choice,progress=0,mirrored=false,animation=0,timed=false,started=0,elapsed=0,mode='all';
+const shuffle=x=>{x=[...x];for(let i=x.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x};const last=o=>o.pts[o.pts.length-1];const X=x=>mirrored?340-x:x;const point=(p)=>[X(p[0]),p[1]];
+function defenders(before=false){let s=play.side;if(before&&play.motion)s='R';let d={sc:[290,205],wc:[50,205],s:[225,200],m:[145,205],r:[170,175]};if(play.formation==='trips')d={sc:[290,205],wc:[130,205],s:[205,200],m:[250,205],r:[170,175]};if(play.formation==='bunch')d={sc:[270,205],wc:[130,205],s:[203,200],m:[239,205],r:[170,175]};if(s==='L')for(const k in d)d[k][0]=340-d[k][0];if(play.goal){d.sc[1]=d.wc[1]=play.goal===3?225:210;d.s[1]=play.goal===3?215:205;d.m[1]=d.sc[1];if(play.goal===4)d.r[1]=165;}return d;}
+function pos(o,t){let pts=o.pts;if(play.delay===o.id)t=Math.max(0,(t-.28)/.72);if(pts.length===1)return pts[0];let lens=pts.slice(1).map((p,i)=>Math.hypot(p[0]-pts[i][0],p[1]-pts[i][1])),dist=lens.reduce((a,b)=>a+b,0)*Math.min(1,t);for(let i=0;i<lens.length;i++){if(dist<=lens[i]||i===lens.length-1){let f=lens[i]?dist/lens[i]:0;return [pts[i][0]+(pts[i+1][0]-pts[i][0])*f,pts[i][1]+(pts[i+1][1]-pts[i][1])*f]}dist-=lens[i]}return last(o)}
+function ball(t){if(t===0&&stage==='formation')return [170,257];let events=play.ball||[['QB',0]],holder=events[0][0];for(let i=1;i<events.length;i++){let [next,at]=events[i];if(t>=at&&t<at+.10){let a=pos(play.receivers.find(o=>o.id===holder),t),b=pos(play.receivers.find(o=>o.id===next),t),f=(t-at)/.10;return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]}if(t>=at+.10)holder=next;}let p=pos(play.receivers.find(o=>o.id===holder),t);return [p[0]+9,p[1]+10]}
+function marker(p,label,color,stroke,extra=''){let [x,y]=point(p);return `<g ${extra}><circle cx="${x}" cy="${y}" r="11.5" fill="${color}" stroke="${stroke}" stroke-width="1.5"/><text x="${x}" y="${y+3.3}" text-anchor="middle" font-size="8.5" font-weight="900" fill="#101218">${label}</text></g>`}
+function line(a,b,color,extra=''){let [x,y]=point(a),[u,v]=point(b);return `<line x1="${x}" y1="${y}" x2="${u}" y2="${v}" stroke="${color}" ${extra}/>`}
+function finalPosition(k,d){let o=play.receivers.find(o=>o.id===play.ans[k]),p=last(o),start=d[k],dx=start[0]-p[0],dy=start[1]-p[1],len=Math.hypot(dx,dy)||1;return [p[0]+dx/len*23,p[1]+dy/len*23]}
+function field(){let t=progress,goal=play.goal?245-play.goal*10:null,d=defenders(stage==='formation'||stage==='motion');let svg=`<svg id="field" viewBox="0 ${goal?125:0} 340 ${goal?215:340}" aria-label="Football field"><rect x="15" y="15" width="310" height="315" fill="none" stroke="#809b8c"/>`;if(goal){svg+=`<rect x="15" y="125" width="310" height="${goal-125}" fill="#253c34"/><text x="170" y="148" text-anchor="middle" fill="#ffffff33" font-size="20" font-weight="900">END ZONE</text><rect x="15" y="${goal}" width="310" height="50" fill="#ffd45016"/>${line([15,goal],[325,goal],'white','stroke-width="2"')}${line([15,goal+50],[325,goal+50],'#ffd450','stroke-dasharray="4 4"')}`;}else{for(let y=45;y<=295;y+=50){svg+=line([15,y],[325,y],'#90aa9b','opacity=".45"');if(y<=245)svg+=`<text x="20" y="${y-5}" fill="#9cb6ab" font-size="9">${(245-y)/10}</text>`;for(let h=10;h<50;h+=10)for(let x of [110,230])svg+=line([x-4,y+h],[x+4,y+h],'#90aa9b','opacity=".4"');}svg+='<text x="170" y="115" fill="#ffffff0e" font-size="46" font-weight="900" text-anchor="middle">FIRE</text>';}svg+=line([170,15],[170,330],'#ffffff44','stroke-dasharray="4 5"')+line([15,245],[325,245],'white','stroke-dasharray="5 4" stroke-width="1.5"');
+if(stage==='motion')svg+=line([225,260],[120,260],'#ffd450','stroke-width="3" stroke-dasharray="5 4"');
+for(let o of play.receivers){if(t>0&&o.pts.length>1){let pts=o.pts,seg=[],remain=t*pts.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-pts[i][0],p[1]-pts[i][1]),0);if(play.delay===o.id)remain*=Math.max(0,(t-.28)/.72)/(t||1);seg.push(pts[0]);for(let i=1;i<pts.length;i++){let n=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);if(remain>=n){seg.push(pts[i]);remain-=n}else{seg.push(pos(o,t));break}}svg+=`<polyline points="${seg.map(p=>point(p).join(',')).join(' ')}" fill="none" stroke="#ff329b" stroke-width="2.6" stroke-linejoin="round" opacity="${stage==='review'?.35:1}"/>`;}}
+for(let k of Object.keys(d)){if(stage==='assign'&&answers[k])svg+=line(d[k],last(play.receivers.find(o=>o.id===answers[k])),'#61cfff','stroke-width="2" stroke-dasharray="5 4"');if(stage==='review')svg+=line(d[k],finalPosition(k,d),'#b7ff30','stroke-width="2" stroke-dasharray="5 4"');}
+for(let o of play.receivers){let p=pos(o,t);if(play.motion&&stage==='formation'&&o.id==='WR2')p=[225,260];svg+=marker(p,o.id,'#ff329b','#ffc0de',stage==='assign'?`data-receiver="${o.id}" style="cursor:pointer"`:'');}for(let k of Object.keys(d))svg+=marker(stage==='review'?finalPosition(k,d):d[k],labels[k],'#b7ff30',stage==='assign'&&active===k?'white':'#e0ffab',stage==='assign'&&keys().includes(k)?`data-defender="${k}" style="cursor:pointer"`:'');let [bx,by]=point(ball(t));svg+=`<ellipse cx="${bx}" cy="${by}" rx="5" ry="3" fill="#ffd450" stroke="#8d6320"/></svg>`;return svg;}
+const keys=()=>play.manual?['sc','wc','s','m','r']:['sc','wc','s','m'];function home(){cancelAnimationFrame(animation);app.innerHTML=`<div class="panel"><h2>Train like FIRE.</h2><p>Read the formation. Recognize the play. Assign every defender.</p><label>Session <select id="mode"><option value="all">All 25 plays Â· randomized</option><option value="quick">Quick challenge Â· 5 plays</option><option value="coach">Coach review Â· original order</option></select></label><label><input type="checkbox" id="timed"> Timed mode (tracks elapsed time)</label><button class="primary" id="start">START TRAINING</button><p class="muted">Coach-testing edition Â· scores stay in this session. No player accounts.</p></div>`;document.getElementById('start').onclick=()=>{mode=document.getElementById('mode').value;timed=document.getElementById('timed').checked;order=mode==='coach'?[...plays]:shuffle(plays);if(mode==='quick')order=order.slice(0,5);index=score=total=0;started=Date.now();load();};}
+function load(){play=order[index];mirrored=mode!=='coach'&&Math.random()<.5;stage='formation';answers={};active='sc';choice=null;progress=0;render();}
+function animate(to,done){stage='running';render();let from=progress,start=performance.now(),duration=Math.max(400,2200*(to-from));function tick(now){let f=Math.min(1,(now-start)/duration);progress=from+(to-from)*f;document.getElementById('fieldwrap').innerHTML=field();if(f<1)animation=requestAnimationFrame(tick);else done();}animation=requestAnimationFrame(tick);}
+function snap(){if(play.motion){stage='motion';render();return;}animate(play.q?(play.cut||.88):1,()=>{stage=play.q?'question':'assign';render()});}
+function choose(i){choice=i;if(stage==='motion'){progress=0;animate(1,()=>{stage='assign';render()});}else if(progress<1){animate(1,()=>{stage='assign';render()});}else{stage='assign';render();}}
+function assign(id){if(!play.receivers.some(o=>o.id===id))return;answers[active]=id;let next=keys().find(k=>!answers[k]);if(next)active=next;render();}
+function lock(){if(keys().some(k=>!answers[k]))return;score+=keys().filter(k=>answers[k]===play.ans[k]).length+(play.q&&choice===play.q.answer?1:0);total+=keys().length+(play.q?1:0);stage='review';render();}
+function render(){let info=play.goal?`<div class="row panel"><div><small>DOWN</small><br><b>${play.goal===3?'3RD':'4TH'}</b></div><div><small>TO GO</small><br><b>${play.goal} YDS</b></div><div><small>POSITION</small><br><b>${play.goal}-YD LINE</b></div></div>`:'';let controls='';if(stage==='formation')controls='<h2>Read the formation.</h2><button id="snap" class="primary">'+(play.motion?'CONTINUE':'SNAP BALL')+'</button>';if(stage==='running')controls='<p class="step">Watch the play developâ¦</p>';if(stage==='question'||stage==='motion')controls=`<h2>${play.q.prompt}</h2><div class="grid">${play.q.options.map((o,i)=>`<button data-choice="${i}">${o}</button>`).join('')}</div>`;if(stage==='assign')controls=`<p class="step">SELECT A DEFENDER</p><div class="grid">${keys().map(k=>`<button data-defender="${k}" class="${active===k?'selected':''}">${names[k]} Â· ${answers[k]||'â'}</button>`).join('')}</div><p class="step">CHOOSE THEIR RESPONSIBILITY</p><div class="choices">${play.receivers.filter(o=>play.manual||o.id!=='QB').map(o=>`<button class="receiver ${answers[active]===o.id?'selected':''}" data-receiver="${o.id}">${o.id}</button>`).join('')}</div>${!play.manual?'<p class="muted">Rusher â QB Â· Automatic</p>':''}<button id="lock" class="primary" ${keys().some(k=>!answers[k])?'disabled':''}>LOCK IN DEFENSE</button>`;if(stage==='review'){let n=keys().filter(k=>answers[k]===play.ans[k]).length+(play.q&&choice===play.q.answer?1:0);controls=`<h2 class="lime">${n}/${keys().length+(play.q?1:0)} CORRECT</h2><p>${play.name}</p>${play.q?`<div class="feedback"><b class="${choice===play.q.answer?'correct':'wrong'}">${choice===play.q.answer?'â':'â'} Decision question</b><p>${play.q.why}</p></div>`:''}${keys().map(k=>`<div class="row feedback"><span class="${answers[k]===play.ans[k]?'correct':'wrong'}">${answers[k]===play.ans[k]?'â':'â'} ${names[k]}</span><b>${play.ans[k]}</b>${answers[k]!==play.ans[k]?`<small>Your answer: ${answers[k]}</small>`:''}</div>`).join('')}<button id="next" class="primary">${index===order.length-1?'FINISH SESSION':'NEXT PLAY'}</button><button id="replay" style="margin-top:8px;width:100%">REPLAY ANIMATION</button>`;}
+app.innerHTML=`<div class="panel"><div class="row stats"><span>PLAY ${index+1}/${order.length}</span><span class="lime">${score}/${total} POINTS</span></div><div class="bar"><i style="width:${100*index/order.length}%"></i></div>${info}<div id="fieldwrap">${field()}</div><div class="legend"><span style="color:#ff329b">â Offense</span><span class="lime">â Defense</span><span style="color:#ffd450">â Football</span></div><div class="step">${stage==='formation'?'FORMATION':stage==='review'?'REVIEW':stage==='assign'?'ASSIGNMENTS':'REACTION'}</div>${controls}</div><button id="quit">END SESSION</button>`;}
+function finish(){cancelAnimationFrame(animation);elapsed=Math.round((Date.now()-started)/1000);app.innerHTML=`<div class="panel"><h2>SESSION COMPLETE</h2><h1 class="lime">${total?Math.round(score/total*100):0}%</h1><p>${score} of ${total} points</p>${timed?`<p>Time: ${Math.floor(elapsed/60)}m ${elapsed%60}s</p>`:''}<button class="primary" id="home">PLAY AGAIN</button></div>`;}
+app.addEventListener('click',e=>{let el=e.target.closest('button,[data-defender],[data-receiver]');if(!el||el.disabled)return;if(el.id==='snap')snap();if(el.id==='lock')lock();if(el.id==='next'){if(++index>=order.length)finish();else load();}if(el.id==='home')home();if(el.id==='quit'){if(confirm('End this session?'))finish();}if(el.id==='replay'){progress=0;animate(1,()=>{stage='review';render()});}if(el.dataset.choice!==undefined)choose(Number(el.dataset.choice));if(stage==='assign'&&el.dataset.defender){active=el.dataset.defender;render();}if(stage==='assign'&&el.dataset.receiver)assign(el.dataset.receiver);});home();
+</script></body></html>
